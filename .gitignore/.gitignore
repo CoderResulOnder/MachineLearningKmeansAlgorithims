@@ -1,0 +1,64 @@
+     public void MachineLearning()
+        {
+            using (RamanEntities db = new RamanEntities())
+            {
+                List<double[]> Ogretilecekler = new List<double[]>();
+
+                List<Kutuphane> librarys = db.Kutuphanes.Where(x=>x.aktiflik==1).ToList();
+
+
+                System.Data.DataTable KalitatifDatalar;
+                KalitatifDatalar = KalitatifViewDatatable();
+               
+                KMeans kmeans = new KMeans(k: 1)
+                {
+
+                };
+
+                int sayac = 0;
+
+                foreach (var i in librarys)
+                {
+                   
+                    foreach (var j in i.Sonuclars)
+                    {
+
+                        DataRow yeniRow = KalitatifDatalar.NewRow();
+
+                        KalitatifDatalar.Rows.Add(yeniRow);
+
+
+                        KalitatifDatalar.Rows[sayac][0] = i.KutuphaneAdi;
+                        KalitatifDatalar.Rows[sayac][1] = j.sonucAdi;
+
+                        Ogretilecekler.Clear();
+                        Ogretilecekler.Add(mlbaselineAndNormalizeControl(Array.ConvertAll(j.sonucIcerigi.Split(';'), x => DoubleConverter(x))));
+
+                        var clusters = kmeans.Learn(Ogretilecekler.ToArray());
+                        double farksonuc = clusters.Score(mlbaselineAndNormalizeControl(fark));
+                        double digerFark = farkHesapla(Ogretilecekler[0], mlbaselineAndNormalizeControl(fark));
+
+                        if (Math.Abs(farksonuc) > 100)
+                        {
+                            farksonuc = 0.0;
+                        }
+                        else
+                        {
+                            farksonuc = 100.0 -Math.Abs(farksonuc);
+                        }
+
+                        KalitatifDatalar.Rows[sayac][2] =Math.Round(farksonuc,2);
+                        KalitatifDatalar.Rows[sayac][3] =Math.Round(digerFark,2);
+                        KalitatifDatalar.Rows[sayac][4] = j.ID;
+                        sayac++;
+                    }
+
+               }
+
+                BindingSource bind1 = new BindingSource();
+                bind1.DataSource = KalitatifDatalar;
+                gcKalitatifSonuclar.DataSource = null;
+                gcKalitatifSonuclar.DataSource = bind1;
+                gvKalitatifSonuclar.Columns[4].Visible = false;
+            }
+        }
